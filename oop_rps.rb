@@ -1,5 +1,5 @@
 module Formattable
-  def format(line)
+  def display_formatted_line(line)
     puts "=> #{line}"
   end
 end
@@ -15,10 +15,16 @@ class Hand
     @choice = choice
   end
 
+  def has_winning_hand?(other_hand)
+
+  end
+
   def <=>(other_hand)
     if @choice == other_hand.choice
       0
-    elsif (@choice == 'r' && other_hand.choice == 's') || (@choice == 'p' && other_hand.choice == 'r') || (@choice == 's' && other_hand.choice == 'p')
+    elsif (@choice == 'r' && other_hand.choice == 's') || 
+            (@choice == 'p' && other_hand.choice == 'r') || 
+            (@choice == 's' && other_hand.choice == 'p')
       1
     else
       -1
@@ -59,7 +65,7 @@ class Human < Player
 
   def pick_hand
     begin
-      format "Pick one: (R / P / S)"
+      display_formatted_line "Pick one: (R / P / S)"
       choice = gets.chomp.downcase
     end until Hand::CHOICES.keys.include?(choice)
 
@@ -82,7 +88,7 @@ class Game
   def welcome_message
     system 'clear'
 
-    format "Welcome to Rock, Paper, Scissors!\n\n"
+    display_formatted_line "Welcome to Rock, Paper, Scissors!\n\n"
     puts 'What is your name?'
     player.name = gets.chomp
   end
@@ -90,15 +96,15 @@ class Game
   def compare_hands
     if player.hand == computer.hand
       @tie += 1
-      format "It's a tie!"
+      display_formatted_line "It's a tie!"
     elsif player.hand > computer.hand
       player.wins += 1
       player.hand.display_winning_result
-      format "#{player.name} won!"
+      display_formatted_line "#{player.name} won!"
     else
       computer.hand.display_winning_result
       computer.wins += 1
-      format "#{computer.name} won!"
+      display_formatted_line "#{computer.name} won!"
     end
   end
 
@@ -120,18 +126,22 @@ class Game
     puts scoreboard
   end
 
+  def play_round
+    system 'clear'
+
+    @rounds += 1
+    player.pick_hand
+    puts player
+    computer.pick_hand
+    puts computer
+    compare_hands
+  end
+
   def run
     welcome_message
 
     begin 
-      system 'clear'
-
-      @rounds += 1
-      player.pick_hand
-      puts player
-      computer.pick_hand
-      puts computer
-      compare_hands
+      play_round
     end until replay? != 'y'
 
     display_score
