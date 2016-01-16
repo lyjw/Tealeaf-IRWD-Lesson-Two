@@ -83,7 +83,7 @@ class Human < Player
       puts "Please choose an empty square:"
     end until board.empty_positions.include?(position)
 
-    board.mark_square(position, marker)
+    position
   end
 end
 
@@ -110,8 +110,11 @@ class Game
 
   def current_player_marks_square
     if @current_player == @human
-      @human.pick_square(@board)
+      position = @human.pick_square(@board)
+    else
+      position = @board.empty_positions.sample
     end
+
     @board.mark_square(position, @current_player.marker)
   end
 
