@@ -1,6 +1,7 @@
-class Board
+require 'pry'
 
-  WINNING_LINES = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [1, 4, 7], [2, 5, 8], [3, 6, 9], [1, 5, 9], [3, 5, 7]]
+class Board
+  WINNING_COMBOS = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [1, 4, 7], [2, 5, 8], [3, 6, 9], [1, 5, 9], [3, 5, 7]]
 
   def initialize
     @grid = {}
@@ -38,7 +39,7 @@ class Board
   def winning_lines
     winning_lines = []
 
-    WINNING_LINES.each do |line|
+    WINNING_COMBOS.each do |line|
       winning_line = @grid.select { |key| line.include? key }
       squares = winning_line.keys
       values = winning_line.map { |_, v| v.value }
@@ -48,28 +49,6 @@ class Board
     end
 
     winning_lines
-  end
-
-  def move_to_win(marker)
-    winning_lines.each do |line|
-      return best_move(line) if line.values.count(marker) == 2
-    end
-    false
-  end
-
-  def defend(marker)
-    winning_lines.each do |line|
-      values = line.values
-
-      if !(values.include?(marker)) && values.count(' ') == 1
-        return best_move(line)
-      end
-    end
-    false
-  end
-
-  def best_move(line)
-    line.select { |_, value| value == ' ' }.keys.first
   end
 
   def three_in_a_row?(marker)
@@ -108,6 +87,29 @@ class Player
     @name = name
     @marker = marker
   end
+
+  def move_to_win(board, marker)
+    board.winning_lines.each do |line|
+      return best_move(line) if line.values.count(marker) == 2
+    end
+    false
+  end
+
+  def defend(board, marker)
+    board.winning_lines.each do |line|
+      values = line.values
+
+      if !(values.include?(marker)) && values.count(' ') == 1
+        return best_move(line)
+      end
+    end
+    false
+  end
+
+  def best_move(line)
+    line.select { |_, value| value == ' ' }.keys.first
+  end
+
 end
 
 class Human < Player
@@ -128,10 +130,10 @@ class Computer < Player
     puts "Computer is choosing a square..."
     sleep 0.5
 
-    if board.move_to_win(marker)
-      position = board.move_to_win(marker)
-    elsif board.defend(marker)
-      position = board.defend(marker)
+    if move_to_win(board, marker)
+      position = move_to_win(board, marker)
+    elsif defend(board, marker)
+      position = defend(board, marker)
     else
       position = board.empty_positions.sample
     end
@@ -141,6 +143,8 @@ class Computer < Player
 end
 
 class Game
+  attr_accessor :board, :human, :computer
+
   def initialize
     @board = Board.new
     @human = Human.new('', 'X')
@@ -155,12 +159,12 @@ class Game
 
   def get_player_name
     puts "\nWhat is your name?"
-    @human.name = gets.chomp
+    human.name = gets.chomp
   end
 
   def check_for_winner_or_tie
-    if @board.three_in_a_row?(@human.marker) || @board.three_in_a_row?(@computer.marker) || 
-      @board.all_squares_filled?
+    if board.three_in_a_row?(human.marker) || board.three_in_a_row?(computer.marker) || 
+      board.all_squares_filled?
       true
     else
       false
@@ -168,10 +172,10 @@ class Game
   end
 
   def display_winner
-    if @board.three_in_a_row?(@human.marker)
-      puts "#{@human.name} won!"
-    elsif @board.three_in_a_row?(@computer.marker)
-      puts "#{@computer.name} won!"
+    if board.three_in_a_row?(human.marker)
+      puts "#{human.name} won!"
+    elsif board.three_in_a_row?(computer.marker)
+      puts "#{computer.name} won!"
     else
       puts "It's a tie!"
     end
@@ -182,7 +186,7 @@ class Game
     answer = gets.chomp.downcase
 
     if answer == 'y'
-      @board = Board.new
+      board = Board.new
     else
       false
     end
@@ -192,14 +196,14 @@ class Game
     welcome_message
 
     begin
-      @board.draw
+      board.draw
 
       loop do 
-        @human.pick_square(@board)
-        @board.draw
+        human.pick_square(board)
+        board.draw
         break if check_for_winner_or_tie
-        @computer.pick_square(@board)
-        @board.draw
+        computer.pick_square(board)
+        board.draw
         break if check_for_winner_or_tie
       end
 
