@@ -1,5 +1,3 @@
-require 'pry'
-
 class Board
 
   WINNING_LINES = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [1, 4, 7], [2, 5, 8], [3, 6, 9], [1, 5, 9], [3, 5, 7]]
@@ -37,9 +35,46 @@ class Board
     @reference_board[position] = ' '
   end
 
-  def three_in_a_row?(marker)
+  def winning_lines
+    winning_lines = []
+
     WINNING_LINES.each do |line|
-      return true if (@grid[line[0]].value == marker) && (@grid[line[1]].value == marker) && (@grid[line[2]].value == marker)
+      winning_line = @grid.select { |key| line.include? key }
+      squares = winning_line.keys
+      values = winning_line.map { |_, v| v.value }
+      winning_line_hash = Hash[squares.zip(values)]
+
+      winning_lines << winning_line_hash
+    end
+
+    winning_lines
+  end
+
+  def move_to_win(marker)
+    winning_lines.each do |line|
+      return best_move(line) if line.values.count(marker) == 2
+    end
+    false
+  end
+
+  def defend(marker)
+    winning_lines.each do |line|
+      values = line.values
+
+      if !(values.include?(marker)) && values.count(' ') == 1
+        return best_move(line)
+      end
+    end
+    false
+  end
+
+  def best_move(line)
+    line.select { |_, value| value == ' ' }.keys.first
+  end
+
+  def three_in_a_row?(marker)
+    winning_lines.each do |line|
+      return true if line.values.count(marker) == 3
     end
     false
   end
@@ -66,7 +101,8 @@ class Square
 end
 
 class Player
-  attr_accessor :name, :marker
+  attr_accessor :name
+  attr_reader :marker
 
   def initialize(name, marker)
     @name = name
@@ -83,7 +119,24 @@ class Human < Player
       puts "Please choose an empty square:"
     end until board.empty_positions.include?(position)
 
-    position
+    board.mark_square(position, marker)
+  end
+end
+
+class Computer < Player
+  def pick_square(board)
+    puts "Computer is choosing a square..."
+    sleep 0.5
+
+    if board.move_to_win(marker)
+      position = board.move_to_win(marker)
+    elsif board.defend(marker)
+      position = board.defend(marker)
+    else
+      position = board.empty_positions.sample
+    end
+
+    board.mark_square(position, marker)
   end
 end
 
@@ -91,14 +144,11 @@ class Game
   def initialize
     @board = Board.new
     @human = Human.new('', 'X')
-    @computer = Player.new('Computer', 'O')
-    @current_player = @human
-    @winner = nil
+    @computer = Computer.new('Computer', 'O')
   end
 
   def welcome_message
     system 'clear'
-
     puts "Welcome to Tic-Tac-Toe!"
     get_player_name
   end
@@ -108,29 +158,10 @@ class Game
     @human.name = gets.chomp
   end
 
-  def current_player_marks_square
-    if @current_player == @human
-      position = @human.pick_square(@board)
-    else
-      position = @board.empty_positions.sample
-    end
-
-    @board.mark_square(position, @current_player.marker)
-  end
-
-  def alternate_player
-    if @current_player == @human
-      @current_player = @computer
-    else
-      @current_player = @human
-    end
-  end
-
-  def check_for_winner
-    if @board.three_in_a_row?(@human.marker)
-      @winner = @human.name
-    elsif @board.three_in_a_row?(@computer.marker)
-      @winner = @computer.name
+  def check_for_winner_or_tie
+    if @board.three_in_a_row?(@human.marker) || @board.three_in_a_row?(@computer.marker) || 
+      @board.all_squares_filled?
+      true
     else
       false
     end
@@ -140,25 +171,42 @@ class Game
     if @board.three_in_a_row?(@human.marker)
       puts "#{@human.name} won!"
     elsif @board.three_in_a_row?(@computer.marker)
-      puts "Computer won!"
+      puts "#{@computer.name} won!"
     else
-      puts "It's a tie."
+      puts "It's a tie!"
+    end
+  end
+
+  def replay?
+    puts "\nAnother round? (Enter 'Y' for another round or any key to exit)"
+    answer = gets.chomp.downcase
+
+    if answer == 'y'
+      @board = Board.new
+    else
+      false
     end
   end
 
   def run
     welcome_message
-    @board.draw
 
     begin
-      current_player_marks_square
       @board.draw
-      break if check_for_winner
-      alternate_player
-    end until @board.all_squares_filled?
 
-    display_winner
+      loop do 
+        @human.pick_square(@board)
+        @board.draw
+        break if check_for_winner_or_tie
+        @computer.pick_square(@board)
+        @board.draw
+        break if check_for_winner_or_tie
+      end
+
+      display_winner
+    end until !(replay?)
   end
+
 end
 
 Game.new.run
