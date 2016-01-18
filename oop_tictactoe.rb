@@ -189,7 +189,7 @@ class Game
   def run
     welcome_message
 
-    begin
+    loop do
       board.draw
 
       loop do 
@@ -202,8 +202,8 @@ class Game
       end
 
       display_winner
-      reset
-    end until !replay?
+      replay? ? reset : break
+    end
   end
 end
 
