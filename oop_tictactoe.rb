@@ -1,5 +1,3 @@
-require 'pry'
-
 class Board
   WINNING_COMBOS = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [1, 4, 7], [2, 5, 8], [3, 6, 9], [1, 5, 9], [3, 5, 7]]
 
@@ -99,7 +97,7 @@ class Player
     board.winning_lines.each do |line|
       values = line.values
 
-      if !(values.include?(marker)) && values.count(' ') == 1
+      if !values.include?(marker) && values.count(' ') == 1
         return best_move(line)
       end
     end
@@ -109,10 +107,15 @@ class Player
   def best_move(line)
     line.select { |_, value| value == ' ' }.keys.first
   end
-
 end
 
 class Human < Player
+
+  def get_player_name
+    puts "\nWhat is your name?"
+    @name = gets.chomp
+  end
+
   def pick_square(board)
     puts "Please choose a square (1 - 9)"
 
@@ -151,24 +154,19 @@ class Game
     @computer = Computer.new('Computer', 'O')
   end
 
+  def reset
+    @board = Board.new
+  end
+
   def welcome_message
     system 'clear'
     puts "Welcome to Tic-Tac-Toe!"
-    get_player_name
+    human.get_player_name
   end
 
-  def get_player_name
-    puts "\nWhat is your name?"
-    human.name = gets.chomp
-  end
-
-  def check_for_winner_or_tie
-    if board.three_in_a_row?(human.marker) || board.three_in_a_row?(computer.marker) || 
+  def winner_or_tie?
+    board.three_in_a_row?(human.marker) || board.three_in_a_row?(computer.marker) || 
       board.all_squares_filled?
-      true
-    else
-      false
-    end
   end
 
   def display_winner
@@ -185,11 +183,7 @@ class Game
     puts "\nAnother round? (Enter 'Y' for another round or any key to exit)"
     answer = gets.chomp.downcase
 
-    if answer == 'y'
-      board = Board.new
-    else
-      false
-    end
+    answer == 'y' ? true : false
   end
 
   def run
@@ -201,16 +195,16 @@ class Game
       loop do 
         human.pick_square(board)
         board.draw
-        break if check_for_winner_or_tie
+        break if winner_or_tie?
         computer.pick_square(board)
         board.draw
-        break if check_for_winner_or_tie
+        break if winner_or_tie?
       end
 
       display_winner
-    end until !(replay?)
+      reset
+    end until !replay?
   end
-
 end
 
 Game.new.run
