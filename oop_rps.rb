@@ -15,10 +15,6 @@ class Hand
     @choice = choice
   end
 
-  def has_winning_hand?(other_hand)
-
-  end
-
   def <=>(other_hand)
     if @choice == other_hand.choice
       0
