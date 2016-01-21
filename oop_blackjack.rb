@@ -138,6 +138,10 @@ class Player
     @name = gets.chomp
   end
 
+  def record_win
+    @wins += 1
+  end
+
   def turn(deck)
     start_turn
 
@@ -264,7 +268,7 @@ class Game
 
   def compare_hands
     if player.sum_of_cards > dealer.sum_of_cards
-      player.wins += 1
+      player.record_win
       winning_message(player)
     elsif dealer.sum_of_cards > player.sum_of_cards
       winning_message(dealer)
@@ -282,7 +286,7 @@ class Game
       if both_blackjack?
         " It's a tie."
       elsif player.blackjack? || dealer.bust?
-        player.wins += 1
+        player.record_win
         winning_message(player)
       else
         winning_message(dealer)
