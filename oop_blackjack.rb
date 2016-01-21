@@ -1,24 +1,98 @@
-class Deck
-  attr_reader :cards
+module Formattable
+  def print_divider
+    puts "-------------------------------------------------"
+  end
 
+  def format(msg)
+    puts "\n#{msg}\n\n"
+  end
+
+  def start_turn
+    format "[ #{name}'s Turn ]"
+    display_hand
+    display_sum_of_cards
+  end
+end
+
+module Hand
+  def reset
+    self.hand = []
+  end
+
+  def add_card(new_card)
+    hand << new_card
+  end
+
+  def upcard
+    hand.first
+  end
+
+  def display_upcard
+    puts "#{name}'s upcard is: #{upcard}"
+  end
+
+  def last_card_dealt
+    hand.last
+  end
+
+  def display_hand
+    puts "#{name}'s Hand: #{hand.join(", ")}"
+  end
+
+  def sum_of_cards
+    sum = 0
+    hand.each {|card| sum += card.value }
+
+    hand.select { |card| card.card == 'A'}.count.times do 
+        sum -= 10 if sum > Game::BLACKJACK
+    end
+
+    sum
+  end
+
+  def display_sum_of_cards
+    puts "The sum of #{name}'s cards is #{sum_of_cards}"
+  end
+
+  def display_hit_result
+    format "=> #{name} chooses to hit and draws a #{last_card_dealt}"
+    display_hand
+    display_sum_of_cards
+  end
+
+  def stay
+    format "=> #{name} chooses to stay."
+  end
+
+  def blackjack?
+    sum_of_cards == Game::BLACKJACK
+  end
+
+  def bust?
+    sum_of_cards > Game::BLACKJACK
+  end
+end
+
+class Deck
   SET_OF_CARDS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
   SUITS = ['♠', '♥', '♣', '♦']
 
+  attr_reader :cards
+
   def initialize(n)
-    @cards = [] # an array of Card objects
+    @cards = []
     single_deck = []
 
     SET_OF_CARDS.each do |card|
       SUITS.each do |suit|
-        # If the card is a number card
-        if card.to_i != 0
-          value = card.to_i
+        if card == 'A'
+          value = 11
         elsif card == 'J' || card == 'Q' || card == 'K'
           value = 10
-        elsif card == 'A'
-          value = 11
+        else
+          value = card.to_i
         end
-
+        
         single_deck << Card.new(card, suit, value)
       end
     end
@@ -30,7 +104,6 @@ class Deck
   def deal_card
     cards.shift
   end
-
 end
 
 class Card
@@ -48,191 +121,237 @@ class Card
   end
 end
 
-class Hand
-  attr_accessor :cards
+class Player
+  include Formattable
+  include Hand
+
+  attr_accessor :name, :hand, :wins
 
   def initialize
-    @cards = []
+    @name = ""
+    @hand = []
+    @wins = 0
   end
 
-  def sum_of_cards
-    sum = 0
-    cards.each {|card| sum += card.value }
-
-    if cards.map { |card| card.card }.include?('A') && sum > 21
-      sum -= 10
-    end
-
-    sum
-  end
-
-  def to_s
-    "#{cards.join(", ")}"
-  end
-
-  def blackjack?
-    sum_of_cards == 21
-  end
-
-  def bust?
-    sum_of_cards > 21
-  end
-
-end
-
-class Player
-  attr_reader :name
-  attr_accessor :hand
-
-  def initialize(name)
-    @name = name
-    @hand = Hand.new
-  end
-
-  def display_hand
-    puts "#{name}'s Hand: #{hand}"
-  end
-
-  def display_sum_of_cards
-    puts "- #{name}'s cards have a sum of #{hand.sum_of_cards}."
-  end
-
-  def hit(deck)
-    hand.cards << deck.deal_card
-  end
-
-  def stay
-    puts "=> #{name} chooses to stay.\n\n"
+  def set_name
+    puts "What is your name?"
+    @name = gets.chomp
   end
 
   def turn(deck)
-    loop do
-      sleep 0.8
-      break if hand.blackjack?
+    start_turn
 
-      puts "\nWould you like to Hit ('h') or Stay ('s')?"
+    loop do
+      break if blackjack?
+
+      puts "\nWould you like to 'Hit' or 'Stay'?"
       choice = gets.chomp.downcase
 
-      if choice == 'h'
-        hit(deck)
-        puts "=> #{name} chooses to hit and draws a #{hand.cards.last}."
-        display_hand
-        display_sum_of_cards
-        break if hand.blackjack? || hand.bust?
-      elsif choice == 's'
+      if choice == 'hit'
+        add_card(deck.deal_card)
+        display_hit_result
+        break if blackjack? || bust?
+      elsif choice == 'stay'
         stay
         break
-      else
-        puts "Sorry, that is not a valid option"
-        next
       end
+
+      next if !['hit','stay'].include?(choice)
     end
   end
-
 end
 
-class Dealer < Player
+class Dealer
+  include Formattable
+  include Hand
+
+  MIN_HAND = 17
+
+  attr_accessor :name, :hand
+
+  def initialize
+    @name = "Dealer"
+    @hand = []
+  end
 
   def turn(deck)
+    start_turn
+    
     loop do 
-      if hand.sum_of_cards < 17
-        hit(deck)
-        puts "=> #{name} chooses to hit and draws a #{hand.cards.last}."
-        display_hand
-        display_sum_of_cards
-        break if hand.blackjack? || hand.bust?
-      elsif hand.sum_of_cards >= 17
+      break if blackjack?
+      sleep 0.8
+
+      if sum_of_cards < MIN_HAND
+        add_card(deck.deal_card)
+        display_hit_result
+        break if blackjack? || bust?
+      elsif sum_of_cards >= MIN_HAND
         stay
         break
       end
     end
   end
-
 end
 
 class Game
-  attr_accessor :deck, :player, :dealer
+  include Formattable
+
+  BLACKJACK = 21
+
+  attr_accessor :deck, :player, :dealer, :rounds
 
   def initialize
     @deck = Deck.new(2)
-    @player = Player.new("Jane")
-    @dealer = Dealer.new("Dealer")
+    @player = Player.new
+    @dealer = Dealer.new
+    @rounds = 0
   end
 
-  def welcome_message
+  def reset_hands
+    @player.reset
+    @dealer.reset
+  end
+
+  def display_welcome_message
     system 'clear'
-    puts "Welcome to Blackjack!\n\n"
+    format "Welcome to Blackjack!"
   end
 
   def deal_initial_cards
     2.times do
-      player.hit(deck)
-      dealer.hit(deck)
+      player.add_card(deck.deal_card)
+      dealer.add_card(deck.deal_card)
     end
   end
 
-  def blackjack_or_bust
-    if player.hand.blackjack?
-      "#{player.name} got Blackjack!"
-    elsif dealer.hand.blackjack? 
-      "#{dealer.name} got Blackjack!"
-    elsif player.hand.bust?
-      "#{player.name} bust!"
-    elsif dealer.hand.bust?
-      "#{dealer.name} bust!"
+  def both_blackjack?
+    player.blackjack? && dealer.blackjack?
+  end
+
+  def announce_blackjack(person)
+    if person == @player
+      "Congratulations, you got Blackjack!"
     else
-      false
+      "#{person.name} got Blackjack."
     end
+  end
+
+  def announce_bust(person)
+    "#{person.name} bust."
+  end
+
+  def blackjack_or_bust?(person)
+    person.blackjack? || person.bust?
+  end
+
+  def end_by_blackjack_or_bust?
+    blackjack_or_bust?(player) || blackjack_or_bust?(dealer)
+  end
+
+  def announce_blackjack_or_bust
+    if both_blackjack?
+      "Both #{player.name} and #{dealer.name} got Blackjack."
+    elsif player.blackjack?
+      announce_blackjack(player)
+    elsif dealer.blackjack? 
+      announce_blackjack(dealer)
+    elsif player.bust?
+      announce_bust(player)
+    elsif dealer.bust?
+      announce_bust(dealer)
+    end
+  end
+
+  def compare_hands
+    if player.sum_of_cards > dealer.sum_of_cards
+      player.wins += 1
+      winning_message(player)
+    elsif dealer.sum_of_cards > player.sum_of_cards
+      winning_message(dealer)
+    else
+      "It's a tie."
+    end
+  end
+
+  def winning_message(winner)
+    "Winner: #{winner.name}"
   end
 
   def winner
-    if blackjack_or_bust
-      if player.hand.blackjack? || dealer.hand.bust?
-        "#{player.name} wins!"
+    if end_by_blackjack_or_bust?
+      if both_blackjack?
+        " It's a tie."
+      elsif player.blackjack? || dealer.bust?
+        player.wins += 1
+        winning_message(player)
       else
-        "#{dealer.name} wins!"
+        winning_message(dealer)
       end
     else
-      if player.hand.sum_of_cards > dealer.hand.sum_of_cards 
-        "#{player.name} wins!"
-      elsif dealer.hand.sum_of_cards > player.hand.sum_of_cards
-        "#{dealer.name} wins!"
-      else
-        "It's a tie."
-      end
+      compare_hands
     end
   end
 
-  def display_winner
-    if blackjack_or_bust
-      puts "#{blackjack_or_bust}"
+  def display_result
+    format "[ Result ]"
+
+    if end_by_blackjack_or_bust?
+      puts announce_blackjack_or_bust
     else
       player.display_sum_of_cards
       dealer.display_sum_of_cards
     end
 
-    puts "#{winner}"
+    format "#{winner}"
+  end
+
+  def replay?
+    puts "[ Another Round? (Y/N) ]"
+    choice = gets.chomp.downcase
+
+    until ['y','n'].include?(choice) do
+      puts "Please enter 'Y' to play again or 'N' to exit."
+      choice = gets.chomp.downcase
+    end
+
+    choice == 'y' ? true : false
+  end
+
+  def start_game
+    system 'clear'
+    self.rounds += 1
+    puts "Welcome to Round #{rounds}:\n\n"
+    deal_initial_cards
+    dealer.display_upcard
+    print_divider
+  end
+
+  def end_game
+    format "Thanks for playing!"
+    puts "=> You won #{player.wins} out of #{rounds} rounds."
   end
 
   def run
-    welcome_message
-    deal_initial_cards
-    player.display_hand
-    player.display_sum_of_cards
-    dealer.display_hand
-    dealer.display_sum_of_cards
+    display_welcome_message
+    player.set_name
 
     loop do
-      break if blackjack_or_bust
-      player.turn(deck)
-      break if blackjack_or_bust
-      dealer.turn(deck)
-      break if blackjack_or_bust || winner
+      start_game
+
+      loop do
+        player.turn(deck)
+        break if blackjack_or_bust?(player)
+        dealer.turn(deck)
+        break if end_by_blackjack_or_bust? || winner
+      end
+
+      display_result
+      break if !replay?
+      reset_hands
     end
 
-    display_winner
+    end_game
   end
-
 end
 
 Game.new.run
