@@ -1,5 +1,3 @@
-require 'pry'
-
 module Formattable
   def print_divider
     puts "-------------------------------------------------"
@@ -141,7 +139,6 @@ class Player
   end
 
   def record_win
-    binding.pry
     @wins += 1
   end
 
