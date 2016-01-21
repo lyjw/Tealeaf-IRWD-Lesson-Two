@@ -1,3 +1,5 @@
+require 'pry'
+
 module Formattable
   def print_divider
     puts "-------------------------------------------------"
@@ -139,6 +141,7 @@ class Player
   end
 
   def record_win
+    binding.pry
     @wins += 1
   end
 
@@ -256,6 +259,7 @@ class Game
     if both_blackjack?
       "Both #{player.name} and #{dealer.name} got Blackjack."
     elsif player.blackjack?
+      player.record_win
       announce_blackjack(player)
     elsif dealer.blackjack? 
       announce_blackjack(dealer)
@@ -286,7 +290,6 @@ class Game
       if both_blackjack?
         " It's a tie."
       elsif player.blackjack? || dealer.bust?
-        player.record_win
         winning_message(player)
       else
         winning_message(dealer)
