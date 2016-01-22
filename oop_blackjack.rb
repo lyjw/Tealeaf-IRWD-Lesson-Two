@@ -1,4 +1,4 @@
-module Formattable
+module Displayable
   def print_divider
     puts "-------------------------------------------------"
   end
@@ -21,14 +21,6 @@ module Hand
 
   def add_card(new_card)
     hand << new_card
-  end
-
-  def upcard
-    hand.first
-  end
-
-  def display_upcard
-    puts "#{name}'s upcard is: #{upcard}"
   end
 
   def last_card_dealt
@@ -81,6 +73,11 @@ class Deck
 
   def initialize(n)
     @cards = []
+    n.times { @cards << single_deck }
+    @cards = @cards.flatten.shuffle!
+  end
+
+  def single_deck
     single_deck = []
 
     SET_OF_CARDS.each do |card|
@@ -97,8 +94,7 @@ class Deck
       end
     end
 
-    n.times { @cards << single_deck }
-    @cards = @cards.flatten.shuffle!
+    single_deck
   end
 
   def deal_card
@@ -122,7 +118,7 @@ class Card
 end
 
 class Player
-  include Formattable
+  include Displayable
   include Hand
 
   attr_accessor :name, :hand, :wins
@@ -166,7 +162,7 @@ class Player
 end
 
 class Dealer
-  include Formattable
+  include Displayable
   include Hand
 
   MIN_HAND = 17
@@ -176,6 +172,14 @@ class Dealer
   def initialize
     @name = "Dealer"
     @hand = []
+  end
+
+  def upcard
+    hand.first
+  end
+
+  def display_upcard
+    puts "#{name}'s upcard is: #{upcard}"
   end
 
   def turn(deck)
@@ -198,7 +202,7 @@ class Dealer
 end
 
 class Game
-  include Formattable
+  include Displayable
 
   BLACKJACK = 21
 
@@ -256,7 +260,6 @@ class Game
     if both_blackjack?
       "Both #{player.name} and #{dealer.name} got Blackjack."
     elsif player.blackjack?
-      player.record_win
       announce_blackjack(player)
     elsif dealer.blackjack? 
       announce_blackjack(dealer)
@@ -269,7 +272,6 @@ class Game
 
   def compare_hands
     if player.sum_of_cards > dealer.sum_of_cards
-      player.record_win
       winning_message(player)
     elsif dealer.sum_of_cards > player.sum_of_cards
       winning_message(dealer)
@@ -307,6 +309,14 @@ class Game
     end
 
     format "#{winner}"
+  end
+
+  def record_player_result
+    if end_by_blackjack_or_bust?
+      player.record_win if player.blackjack? || dealer.bust?
+    else
+      player.record_win if player.sum_of_cards > dealer.sum_of_cards
+    end
   end
 
   def replay?
@@ -349,6 +359,7 @@ class Game
         break if end_by_blackjack_or_bust? || winner
       end
 
+      record_player_result
       display_result
       break if !replay?
       reset_hands
