@@ -134,7 +134,7 @@ class Player
     @name = gets.chomp
   end
 
-  def record_win
+  def add_win
     @wins += 1
   end
 
@@ -311,11 +311,11 @@ class Game
     format "#{winner}"
   end
 
-  def record_player_result
+  def record_result
     if end_by_blackjack_or_bust?
-      player.record_win if player.blackjack? || dealer.bust?
+      player.add_win if player.blackjack? || dealer.bust?
     else
-      player.record_win if player.sum_of_cards > dealer.sum_of_cards
+      player.add_win if player.sum_of_cards > dealer.sum_of_cards
     end
   end
 
@@ -359,7 +359,7 @@ class Game
         break if end_by_blackjack_or_bust? || winner
       end
 
-      record_player_result
+      record_result
       display_result
       break if !replay?
       reset_hands
