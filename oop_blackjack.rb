@@ -14,6 +14,57 @@ module Displayable
   end
 end
 
+module GameConditions
+  BLACKJACK = 21
+  DEALER_MIN_HAND = 17
+
+  def blackjack?
+    sum_of_cards == GameConditions::BLACKJACK
+  end
+
+  def both_blackjack?
+    player.blackjack? && dealer.blackjack?
+  end
+
+  def announce_blackjack(person)
+    if person == @player
+      "Congratulations, you got Blackjack!"
+    else
+      "#{person.name} got Blackjack."
+    end
+  end
+
+  def bust?
+    sum_of_cards > GameConditions::BLACKJACK
+  end
+
+  def announce_bust(person)
+    "#{person.name} bust."
+  end
+
+  def blackjack_or_bust?(person)
+    person.blackjack? || person.bust?
+  end
+
+  def end_by_blackjack_or_bust?
+    blackjack_or_bust?(player) || blackjack_or_bust?(dealer)
+  end
+
+  def announce_blackjack_or_bust
+    if both_blackjack?
+      "Both #{player.name} and #{dealer.name} got Blackjack."
+    elsif player.blackjack?
+      announce_blackjack(player)
+    elsif dealer.blackjack? 
+      announce_blackjack(dealer)
+    elsif player.bust?
+      announce_bust(player)
+    elsif dealer.bust?
+      announce_bust(dealer)
+    end
+  end
+end
+
 module Hand
   def reset
     self.hand = []
@@ -36,7 +87,7 @@ module Hand
     hand.each {|card| sum += card.value }
 
     hand.select { |card| card.card == 'A'}.count.times do 
-        sum -= 10 if sum > Game::BLACKJACK
+        sum -= 10 if sum > GameConditions::BLACKJACK
     end
 
     sum
@@ -54,14 +105,6 @@ module Hand
 
   def stay
     format "=> #{name} chooses to stay."
-  end
-
-  def blackjack?
-    sum_of_cards == Game::BLACKJACK
-  end
-
-  def bust?
-    sum_of_cards > Game::BLACKJACK
   end
 end
 
@@ -119,6 +162,7 @@ end
 
 class Player
   include Displayable
+  include GameConditions
   include Hand
 
   attr_accessor :name, :hand, :wins
@@ -163,9 +207,8 @@ end
 
 class Dealer
   include Displayable
+  include GameConditions
   include Hand
-
-  MIN_HAND = 17
 
   attr_accessor :name, :hand
 
@@ -189,11 +232,11 @@ class Dealer
       break if blackjack?
       sleep 0.8
 
-      if sum_of_cards < MIN_HAND
+      if sum_of_cards < GameConditions::DEALER_MIN_HAND
         add_card(deck.deal_card)
         display_hit_result
         break if blackjack? || bust?
-      elsif sum_of_cards >= MIN_HAND
+      elsif sum_of_cards >= GameConditions::DEALER_MIN_HAND
         stay
         break
       end
@@ -203,8 +246,7 @@ end
 
 class Game
   include Displayable
-
-  BLACKJACK = 21
+  include GameConditions
 
   attr_accessor :deck, :player, :dealer, :rounds
 
@@ -216,8 +258,8 @@ class Game
   end
 
   def reset_hands
-    @player.reset
-    @dealer.reset
+    player.reset
+    dealer.reset
   end
 
   def display_welcome_message
@@ -229,54 +271,6 @@ class Game
     2.times do
       player.add_card(deck.deal_card)
       dealer.add_card(deck.deal_card)
-    end
-  end
-
-  def both_blackjack?
-    player.blackjack? && dealer.blackjack?
-  end
-
-  def announce_blackjack(person)
-    if person == @player
-      "Congratulations, you got Blackjack!"
-    else
-      "#{person.name} got Blackjack."
-    end
-  end
-
-  def announce_bust(person)
-    "#{person.name} bust."
-  end
-
-  def blackjack_or_bust?(person)
-    person.blackjack? || person.bust?
-  end
-
-  def end_by_blackjack_or_bust?
-    blackjack_or_bust?(player) || blackjack_or_bust?(dealer)
-  end
-
-  def announce_blackjack_or_bust
-    if both_blackjack?
-      "Both #{player.name} and #{dealer.name} got Blackjack."
-    elsif player.blackjack?
-      announce_blackjack(player)
-    elsif dealer.blackjack? 
-      announce_blackjack(dealer)
-    elsif player.bust?
-      announce_bust(player)
-    elsif dealer.bust?
-      announce_bust(dealer)
-    end
-  end
-
-  def compare_hands
-    if player.sum_of_cards > dealer.sum_of_cards
-      winning_message(player)
-    elsif dealer.sum_of_cards > player.sum_of_cards
-      winning_message(dealer)
-    else
-      "It's a tie."
     end
   end
 
@@ -298,6 +292,24 @@ class Game
     end
   end
 
+  def compare_hands
+    if player.sum_of_cards > dealer.sum_of_cards
+      winning_message(player)
+    elsif dealer.sum_of_cards > player.sum_of_cards
+      winning_message(dealer)
+    else
+      "It's a tie."
+    end
+  end
+
+  def record_result
+    if end_by_blackjack_or_bust?
+      player.add_win if player.blackjack? || dealer.bust?
+    else
+      player.add_win if player.sum_of_cards > dealer.sum_of_cards
+    end
+  end
+
   def display_result
     format "[ Result ]"
 
@@ -309,14 +321,6 @@ class Game
     end
 
     format "#{winner}"
-  end
-
-  def record_result
-    if end_by_blackjack_or_bust?
-      player.add_win if player.blackjack? || dealer.bust?
-    else
-      player.add_win if player.sum_of_cards > dealer.sum_of_cards
-    end
   end
 
   def replay?
